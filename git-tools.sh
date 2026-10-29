@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # git-tools.sh
-# Malý helper pro Git workflow (ideální jako backend pro git aliasy).
-# Instalace, konfigurace a aliasy: GitToolsSetup.cmd (ve stejné složce jako zdrojová verze).
+# Small helper for Git workflow (ideal as a backend for git aliases).
+# Installation, configuration and aliases: GitToolsSetup.cmd (in the same folder as the source version).
 #
-# Doporučené aliasy v ~/.gitconfig:
+# Recommended aliases in ~/.gitconfig:
 #   [alias]
 #     new      = "!$HOME/git-tools.sh new"
 #     sw       = "!$HOME/git-tools.sh sw"
@@ -28,8 +28,8 @@
 set -euo pipefail
 
 # === Config loading ===
-# Načte hodnoty z konfiguračního souboru, pokud existuje.
-# Řádek GITTOOLS_CONFIG_DEFAULT přepisuje GitToolsSetup při instalaci.
+# Loads values from the config file, if it exists.
+# The GITTOOLS_CONFIG_DEFAULT line is rewritten by GitToolsSetup during installation.
 GITTOOLS_CONFIG_DEFAULT="J:/config/git-tools.conf"
 
 if [[ -n "${GITTOOLS_CONFIG:-}" && -f "$GITTOOLS_CONFIG" ]]; then
@@ -39,24 +39,24 @@ elif [[ -f "$GITTOOLS_CONFIG_DEFAULT" ]]; then
 fi
 
 # =========================
-# Konfigurace (lze override přes env proměnné)
-# Jedná se pouze o FALLBACK, jinak se hodnoty berou z git-tools.conf
+# Configuration (can be overridden via env variables)
+# These are only FALLBACKS; values are normally taken from git-tools.conf
 # =========================
-# Prefix pro „uživatelské“ branche
+# Prefix for "user" branches
 USER_PREFIX="${USER_PREFIX:-user/unknown/}"
 
-# Seznam „env“ branchí (oddělený mezerami). Tyto branche:
-# - necháváme jako lokální názvy (main/dev/...)
-# - pro diff/rebase-base normalizujeme na origin/<branch> a děláme fetch
+# List of "env" branches (space-separated). These branches:
+# - are kept as local names (main/dev/...)
+# - are normalized to origin/<branch> (with fetch) for diff/rebase base
 ENV_BRANCHES="${ENV_BRANCHES:-main dev acc int work}"
 
-# Default base branch pro některé příkazy
+# Default base branch for some commands
 DEFAULT_BASE="${DEFAULT_BASE:-main}"
 
-# Default dir pro --log u dif (vytvoří soubor)
+# Default dir for dif --log (a file is created there)
 DIFF_LOG_DIR="${DIFF_LOG_DIR:-j:/temp}"
 
-# Default prefix pro legacy shortcuty (dif-file, com); prázdný = bez prefixu
+# Default prefix for legacy shortcuts (dif-file, com); empty = no prefix
 LEGACY_DIR="${LEGACY_DIR:-}"
 
 # =========================
@@ -68,7 +68,7 @@ current_branch() {
   git branch --show-current
 }
 
-# Vrací 0 (true), pokud je $1 v ENV_BRANCHES, jinak 1 (false)
+# Returns 0 (true) if $1 is in ENV_BRANCHES, otherwise 1 (false)
 is_env_branch() {
   local b="${1:-}"
   local x
@@ -78,31 +78,31 @@ is_env_branch() {
   return 1
 }
 
-# Vrací 0 (true), pokud to vypadá jako git ref/commit-ish a nemá se prefixovat.
-# (Chrání před tím, aby se z HEAD nebo hash stal USER_PREFIX+HEAD apod.)
+# Returns 0 (true) if it looks like a git ref/commit-ish and must not be prefixed.
+# (Prevents HEAD or a hash from becoming USER_PREFIX+HEAD etc.)
 is_ref_like() {
   local s="${1:-}"
   [[ -z "$s" ]] && return 1
 
-  # typické refy
+  # typical refs
   [[ "$s" == "HEAD" ]] && return 0
   [[ "$s" == origin/* ]] && return 0
   [[ "$s" == refs/* ]] && return 0
 
-  # commit-ish syntaktika
+  # commit-ish syntax
   [[ "$s" == *"~"* || "$s" == *"^"* ]] && return 0
 
-  # hash (zkrácený i celý)
+  # hash (short or full)
   [[ "$s" =~ ^[0-9a-fA-F]{7,40}$ ]] && return 0
 
   return 1
 }
 
-# Vstup: branch-ish string
-# Výstup:
-# - pokud je to env branch (main/dev/...), vrátí ji jako lokální název
-# - pokud obsahuje '/', vrátí beze změny (např. pepa/pes)
-# - jinak přidá USER_PREFIX (např. test -> user/jikl/test)
+# Input: branch-ish string
+# Output:
+# - if it is an env branch (main/dev/...), returns it as a local name
+# - if it contains '/', returns it unchanged (e.g. pepa/pes)
+# - otherwise prepends USER_PREFIX (e.g. test -> user/jikl/test)
 with_user_prefix() {
   local b="${1:-}"
   [[ -z "$b" ]] && die "Missing branch name"
@@ -119,11 +119,11 @@ with_user_prefix() {
   fi
 }
 
-# Vstup: ref-ish string (pro dif, případně base do reb)
-# Výstup:
-# - env branch -> provede fetch origin <b> a vrátí origin/<b>
-# - ref-like (HEAD, origin/main, hash, refs/...) -> vrátí beze změny
-# - jinak -> použije with_user_prefix (tzn. branch podle konvence USER_PREFIX)
+# Input: ref-ish string (for dif, or the base for reb)
+# Output:
+# - env branch -> runs fetch origin <b> and returns origin/<b>
+# - ref-like (HEAD, origin/main, hash, refs/...) -> returned unchanged
+# - otherwise -> uses with_user_prefix (i.e. branch per the USER_PREFIX convention)
 normalize_ref() {
   local input="${1:-}"
   [[ -z "$input" ]] && die "Missing ref/branch name"
@@ -143,7 +143,7 @@ normalize_ref() {
   printf '%s\n' "$(with_user_prefix "$input")"
 }
 
-# Soubor bez cesty (/ nebo \) doplní o LEGACY_DIR; prázdný LEGACY_DIR = beze změny
+# Prepends LEGACY_DIR to a file without a path (/ or \); empty LEGACY_DIR = unchanged
 legacy_path() {
   local f="${1:-}"
   if [[ "$f" == *"/"* || "$f" == *"\\"* || -z "$LEGACY_DIR" ]]; then
@@ -173,7 +173,7 @@ confirm_dirty_worktree() {
   esac
 }
 
-# -f / --force: obejde pouze ochranu ENV_BRANCHES; NENÍ to git push --force.
+# -f / --force: only bypasses the ENV_BRANCHES protection; it is NOT git push --force.
 parse_force() {
   FORCE=0
   POSITIONAL=()
@@ -199,180 +199,180 @@ check_protected() {
 
 usage() {
   cat <<'EOF'
-git-tools.sh - helper CLI (pro git aliasy)
+git-tools.sh - helper CLI (for git aliases)
 
 
-Příkazy:
+Commands:
 
-  Poznámka (bezpečnost):
-    Některé příkazy (např. sw/new/del/sync/up/merg/reb/cp) se před akcí zeptají,
-    pokud máš necommitnuté změny, jestli chceš pokračovat.
+  Note (safety):
+    Some commands (e.g. sw/new/del/sync/up/merg/reb/cp) ask for confirmation
+    before acting if you have uncommitted changes.
 
   br [-asc|--asc] [-desc|--desc] [-rev|--rev]
-      Výpis lokálních branchí.
-      Default: od nejnovějších (podle committerdate).
-      -asc  : řazení podle názvu (A->Z)
-      -desc : řazení podle názvu (Z->A)
-      -rev  : otočí aktuální řazení (např. nejstarší první)
+      Lists local branches.
+      Default: newest first (by committerdate).
+      -asc  : sort by name (A->Z)
+      -desc : sort by name (Z->A)
+      -rev  : reverses the current sort order (e.g. oldest first)
 
   com <message>
   com <path> <message>
-      Přidá změny a vytvoří commit.
+      Stages changes and creates a commit.
       - 1 argument:
           git add . + git commit -m "<message>"
-      - 2 argumenty:
-          - pokud <path> obsahuje '/' nebo '\', použije se přímo:
+      - 2 arguments:
+          - if <path> contains '/' or '\', it is used as is:
               git add <path>
-          - jinak se bere jako legacy shortcut:
-              git add LEGACY_DIR/<path>  (prázdný LEGACY_DIR = <path> beze změny)
-          V obou případech:
+          - otherwise it is treated as a legacy shortcut:
+              git add LEGACY_DIR/<path>  (empty LEGACY_DIR = <path> unchanged)
+          In both cases:
               git commit -m "<message>"
 
   cp [-f|--force] <commit-hash>
-      Před cherry-pick se zeptá, pokud máš necommitnuté změny.
-      Cherry-pick zadaného commitu do aktuální branche.
-      Cherry-pick na env branch je zakázaný.
+      Asks for confirmation first if you have uncommitted changes.
+      Cherry-picks the given commit onto the current branch.
+      Cherry-pick onto an env branch is prohibited.
 
   del [-f|--force] <branch>
-      Smaže branch (pokud nemá '/', použije USER_PREFIX).
-      Env branche (main/dev/...) jsou chráněné a smazání je zakázané.
-      Pokud stojíš na cílové branchi, přepne nejdřív na DEFAULT_BASE
-      (při dirty worktree se zeptá).
+      Deletes a branch (if it has no '/', USER_PREFIX is used).
+      Env branches (main/dev/...) are protected and deleting them is prohibited.
+      If you are on the target branch, switches to DEFAULT_BASE first
+      (asks for confirmation if the worktree is dirty).
 
   dif [OPTIONS] [b1] [b2]
-      git diff mezi dvěma refy.
+      git diff between two refs.
       Default: b1=DEFAULT_BASE, b2=current branch
-      Env branche se normalizují na origin/<branch> a dělá se fetch.
+      Env branches are normalized to origin/<branch> and fetched.
 
-      OPTIONS (lze libovolně kombinovat s pořadím):
-        -n, --name-only      vypíše jen názvy souborů
-        -t, --name-status    vypíše A/M/D status + soubory
-        -s, --stat           vypíše souhrnnou statistiku
-        -l, --log            uloží diff do log souboru
-                             (DIFF_LOG_DIR, název: git_diff_YYYYMMDD.log)
+      OPTIONS (can be combined in any order):
+        -n, --name-only      print file names only
+        -t, --name-status    print A/M/D status + files
+        -s, --stat           print summary statistics
+        -l, --log            write the diff to a log file
+                             (DIFF_LOG_DIR, name: git_diff_YYYYMMDD.log)
 
   dif-file [OPTIONS] [b1] [b2] <filename|path>
-      git diff nad jedním konkrétním souborem.
+      git diff of one specific file.
 
       Default:
         b1 = DEFAULT_BASE
         b2 = current branch
 
-      Pokud <filename> neobsahuje cestu (/ nebo \) a LEGACY_DIR není prázdný,
-      automaticky se doplní prefix:
+      If <filename> contains no path (/ or \) and LEGACY_DIR is not empty,
+      the prefix is added automatically:
         LEGACY_DIR/<filename>
 
-      Env branche se normalizují na origin/<branch>
-      a před diffem se provede fetch.
+      Env branches are normalized to origin/<branch>
+      and fetched before the diff.
 
-      OPTIONS (lze libovolně kombinovat s pořadím):
-        -n, --name-only      vypíše jen názvy souborů
-        -t, --name-status    vypíše A/M/D status
-        -s, --stat           vypíše souhrnnou statistiku
-        -l, --log            uloží diff do log souboru
-                             (DIFF_LOG_DIR, název: git_diff_file_YYYYMMDD.log)
+      OPTIONS (can be combined in any order):
+        -n, --name-only      print file names only
+        -t, --name-status    print A/M/D status
+        -s, --stat           print summary statistics
+        -l, --log            write the diff to a log file
+                             (DIFF_LOG_DIR, name: git_diff_file_YYYYMMDD.log)
 
   done [-f|--force]
       git push -u origin HEAD
-      Push na env branchích (main/dev/...) je zakázaný.
-      Když push selže (typicky po rebase), nabídne --force-with-lease.
+      Push on env branches (main/dev/...) is prohibited.
+      If the push fails (typically after a rebase), offers --force-with-lease.
 
   gone [-f|--force]
-      Provede fetch --all --prune a nabídne smazání lokálních branchí,
-      které mají upstream ': gone' (byly smazány na remote).
-      Env branche přeskočí (s -f je zahrne).
+      Runs fetch --all --prune and offers to delete local branches
+      whose upstream is ': gone' (deleted on the remote).
+      Skips env branches (-f includes them).
 
   merg [-f|--force] <branch>
-      Před merge se zeptá, pokud máš necommitnuté změny.
-      Merge zadané branche do aktuální branche (bez fetch).
-      Pokud <branch> nemá '/', použije USER_PREFIX.
-      Env branche se nechávají jako lokální názvy.
-      Merge do env branche je zakázaný.
+      Asks for confirmation first if you have uncommitted changes.
+      Merges the given branch into the current branch (no fetch).
+      If <branch> has no '/', USER_PREFIX is used.
+      Env branches are kept as local names.
+      Merging into an env branch is prohibited.
 
   new [OPTIONS] <name> [from_in]
-      Vytvoří novou branch
+      Creates a new branch
 
       <name>
-      - když <name> obsahuje '/', použije se beze změny (např. pepa/pes)
-      - jinak se vytvoří USER_PREFIX<name>
+      - if <name> contains '/', it is used unchanged (e.g. pepa/pes)
+      - otherwise USER_PREFIX<name> is created
 
       <from_in>
-      - když není <from_in>, vytvoří z DEFAULT_BASE
-      - když je <from_in> z ENV_BRANCHES, udělá fetch a založí z ní
-      - když <from_in> obsahuje '/', založí se beze změny (např. pepa/pes) (nedělá fetch, předpokládá local branch)
-      - jinak se založí z USER_PREFIX/<from_in> (nedělá fetch, předpokládá local branch)
+      - if <from_in> is not given, creates from DEFAULT_BASE
+      - if <from_in> is in ENV_BRANCHES, fetches and creates from it
+      - if <from_in> contains '/', it is used unchanged (e.g. pepa/pes) (no fetch, assumes a local branch)
+      - otherwise creates from USER_PREFIX/<from_in> (no fetch, assumes a local branch)
 
-      OPTIONS (lze libovolně kombinovat s pořadím)
-        -c, --current     založí z aktuální branche, nedělá fetch!
-                          !! nelze zadat <from_in> i -c => skončí chybou
-        -f, --force       povolí env branch jako target
+      OPTIONS (can be combined in any order)
+        -c, --current     creates from the current branch, no fetch!
+                          !! combining <from_in> and -c => fails with an error
+        -f, --force       allows an env branch as the target
 
-      Env branche (main/dev/...) jsou zakázané jako target.
+      Env branches (main/dev/...) are prohibited as the target.
 
   reb [-f|--force] [base]
-      Před rebase se zeptá, pokud máš necommitnuté změny.
-      Interaktivní rebase AKTUÁLNÍ branche na:
-      - origin/<env base> (pro env base; default je DEFAULT_BASE) + fetch
-      - USER_PREFIX/base (pro non-env base)
-      Rebase na env branchích (main/dev/...) je zakázaný.
+      Asks for confirmation first if you have uncommitted changes.
+      Interactive rebase of the CURRENT branch onto:
+      - origin/<env base> (for an env base; default is DEFAULT_BASE) + fetch
+      - USER_PREFIX/base (for a non-env base)
+      Rebase on env branches (main/dev/...) is prohibited.
 
   reb-ai [-f|--force] [base]
   reb-ac [-f|--force] [base]
-      Stejné jako reb, ale NEinteraktivně a s automatickým řešením konfliktů:
-      - reb-ai = accept incoming (-X theirs) => vyhrají commity AKTUÁLNÍ branche
-      - reb-ac = accept current  (-X ours)   => vyhraje base (např. origin/main)
-      Pozn.: při rebase je "current" base a "incoming" jsou tvoje commity.
-      -X řeší jen obsahové konflikty; modify/delete apod. rebase stejně zastaví.
+      Same as reb, but NON-interactive with automatic conflict resolution:
+      - reb-ai = accept incoming (-X theirs) => commits of the CURRENT branch win
+      - reb-ac = accept current  (-X ours)   => the base wins (e.g. origin/main)
+      Note: during a rebase "current" is the base and "incoming" are your commits.
+      -X only resolves content conflicts; modify/delete etc. still stops the rebase.
 
   st
-      Rychlý přehled: git status -sb + posledních 10 commitů.
+      Quick overview: git status -sb + the last 10 commits.
 
   sw <branch>
-      Před sw se zeptá, pokud máš necommitnuté změny.
-      Switch na branch. Pokud <branch> nemá '/', použije USER_PREFIX.
-      Env branche (main/dev/...) nechává jako lokální názvy.
+      Asks for confirmation first if you have uncommitted changes.
+      Switches to a branch. If <branch> has no '/', USER_PREFIX is used.
+      Env branches (main/dev/...) are kept as local names.
 
   sync <branch>
-      Před resetem/switchem se zeptá, pokud máš necommitnuté změny.
-      Sync lokální branch na origin/<branch>:
+      Asks for confirmation before reset/switch if you have uncommitted changes.
+      Syncs the local branch to origin/<branch>:
       - fetch origin <branch>
-      - když lokální branch neexistuje, vytvoří ji z origin/<branch>
-      - reset --hard na origin/<branch>
-      - volitelně se zeptá na git clean -fd
+      - if the local branch does not exist, creates it from origin/<branch>
+      - reset --hard to origin/<branch>
+      - optionally asks about git clean -fd
 
   up
-      Před rebase/sync se zeptá, pokud máš necommitnuté změny.
-      Aktualizuje current branch:
-      - pokud je current env branch: provede sync <current> (včetně dotazu na git clean -fd)
-      - jinak: fetch origin DEFAULT_BASE + rebase current na origin/DEFAULT_BASE
+      Asks for confirmation before rebase/sync if you have uncommitted changes.
+      Updates the current branch:
+      - if the current branch is an env branch: runs sync <current> (including the git clean -fd prompt)
+      - otherwise: fetch origin DEFAULT_BASE + rebase current onto origin/DEFAULT_BASE
 
   ver list [pattern]
-      Seznam tagů (nejnovější první).
+      Lists tags (newest first).
   ver new <version> [ref] [-m <message>]
-      Vytvoří anotovaný tag na HEAD nebo na zadaném commitu/ref.
-      Zkratka: ver <version> [ref]. Tag se NEpublikuje automaticky.
+      Creates an annotated tag on HEAD or on the given commit/ref.
+      Shortcut: ver <version> [ref]. The tag is NOT published automatically.
   ver show <version>
-      Zobrazí detail tagu a commit.
+      Shows the tag details and commit.
   ver push <version|--all>
-      Publikuje tag nebo všechny lokální tagy na origin.
+      Publishes a tag or all local tags to origin.
   ver del <version> [--remote]
-      Smaže lokální tag; --remote smaže i tag na origin.
-      Tagy nejsou branch a nikdy nedostávají USER_PREFIX.
+      Deletes the local tag; --remote also deletes the tag on origin.
+      Tags are not branches and never get USER_PREFIX.
 
   -f, --force
-      U příkazů cp, del, new, done, merg, reb, reb-ai, reb-ac, gone obejde
-      ochranu ENV_BRANCHES; NEprovádí automaticky git push --force.
+      For cp, del, new, done, merg, reb, reb-ai, reb-ac, gone it bypasses the
+      ENV_BRANCHES protection; it does NOT automatically run git push --force.
 
 
-Konfigurace (git-tools.conf, cesta v GITTOOLS_CONFIG_DEFAULT nebo env GITTOOLS_CONFIG;
-lze override přes env proměnné):
+Configuration (git-tools.conf, path in GITTOOLS_CONFIG_DEFAULT or env GITTOOLS_CONFIG;
+can be overridden via env variables):
   USER_PREFIX="user/unknown/"
   ENV_BRANCHES="main dev acc int work"
   DEFAULT_BASE="main"
   DIFF_LOG_DIR="j:/temp"
   LEGACY_DIR=""
 
-Příklady:
+Examples:
   $HOME/git-tools.sh new pepa/pes
   $HOME/git-tools.sh up
   $HOME/git-tools.sh gone
@@ -385,7 +385,7 @@ EOF
 }
 
 # =========================
-# Příkazy
+# Commands
 # =========================
 cmd_st() {
   local cur
@@ -450,7 +450,7 @@ cmd_del() {
   local target current
   target="$(with_user_prefix "$1")"
 
-  # Bezpečnost: env branche nemaž (lokální kopie); pro sync s remote použij sync
+  # Safety: never delete env branches (local copy); use sync to align with the remote
   check_protected "$target" "Deleting"
 
   current="$(current_branch)"
@@ -526,7 +526,7 @@ cmd_sync() {
   echo "fetching from origin $b"
   git fetch origin "$b"
 
-  # Pokud lokální branch neexistuje, vytvoř ji z origin/$b
+  # If the local branch does not exist, create it from origin/$b
   if ! git show-ref --verify --quiet "refs/heads/$b"; then
     echo "Local branch '$b' not found, creating from origin/$b"
     git switch -c "$b" "origin/$b"
@@ -670,12 +670,12 @@ cmd_reb() {
 }
 
 cmd_reb_ai() {
-  # reb-ai [-f] [base] - při rebase je incoming = theirs (přehrávané commity)
+  # reb-ai [-f] [base] - during a rebase incoming = theirs (replayed commits)
   rebase_impl "theirs" "$@"
 }
 
 cmd_reb_ac() {
-  # reb-ac [-f] [base] - při rebase je current = ours (base)
+  # reb-ac [-f] [base] - during a rebase current = ours (the base)
   rebase_impl "ours" "$@"
 }
 
@@ -690,7 +690,7 @@ rebase_impl() {
 
   current="$(current_branch)"
 
-  # 0) Na env branchích rebase zakázat
+  # 0) Prohibit rebase on env branches
   check_protected "$current" "Rebasing"
 
   # 1) base input (default)
@@ -790,7 +790,7 @@ cmd_dif() {
     stamp="$(date +'%Y%m%d')"
     logfile="$DIFF_LOG_DIR/git_diff_${stamp}.log"
 
-    # vytvoř složku, pokud neexistuje
+    # create the folder if it does not exist
     mkdir -p "$DIFF_LOG_DIR" 2>/dev/null || true
 
     {
@@ -860,7 +860,7 @@ cmd_dif_file() {
     esac
   done
 
-  # poslední argument MUSÍ být soubor / název
+  # the last argument MUST be a file / name
   if [[ ${#args[@]} -lt 1 ]]; then
     die "Usage: git dif-file [options] [b1] [b2] <file|path>"
   fi
@@ -970,7 +970,7 @@ cmd_done() {
   local current answer
   current="$(current_branch)"
 
-  # 0) Na env branchích push zakázat
+  # 0) Prohibit push on env branches
   check_protected "$current" "Pushing"
 
   echo "git push -u origin HEAD"
@@ -978,7 +978,7 @@ cmd_done() {
     return 0
   fi
 
-  # push selhal – typicky po rebase
+  # push failed - typically after a rebase
   echo
   echo "Push failed (branch is probably behind due to rebase)."
   read -r -p "Force push with --force-with-lease? (yes/no) " answer

@@ -1,113 +1,113 @@
 # git-tools
 
-Malý bash helper pro každodenní Git workflow, určený jako backend pro git aliasy (`git new`, `git sw`, `git done`, ...). Přidává konvenci uživatelských branchí (`USER_PREFIX`), ochranu env branchí (`main`, `dev`, ...) a potvrzení před akcemi, které by mohly přijít o necommitnuté změny.
+Small bash helper for everyday Git workflow, designed as a backend for git aliases (`git new`, `git sw`, `git done`, ...). It adds a user-branch naming convention (`USER_PREFIX`), protection of env branches (`main`, `dev`, ...) and confirmation prompts before actions that could lose uncommitted changes.
 
-## Obsah repozitáře
+## Repository contents
 
-| Soubor | Popis |
+| File | Description |
 |---|---|
-| `git-tools.sh` | Vlastní nástroj (bash). |
-| `GitToolsSetup.cmd` | Spouštěč setupu pro Windows. |
-| `GitToolsSetup.ps1` | Interaktivní menu: konfigurace, instalace skriptu, zápis aliasů do `~/.gitconfig`. |
+| `git-tools.sh` | The tool itself (bash). |
+| `GitToolsSetup.cmd` | Setup launcher for Windows. |
+| `GitToolsSetup.ps1` | Interactive menu: configuration, script installation, writing aliases to `~/.gitconfig`. |
 
-## Požadavky
+## Requirements
 
-- Git s bashem (např. Git for Windows / Git Bash)
-- Windows PowerShell (pro setup)
+- Git with bash (e.g. Git for Windows / Git Bash)
+- Windows PowerShell (for setup)
 
-## Instalace
+## Installation
 
-1. Spusť `GitToolsSetup.cmd`.
-2. V menu postupně zvol:
-   - **3** - vytvoření `git-tools.conf` a nastavení jeho cesty ve skriptu,
-   - **4** - instalace `git-tools.sh` (výchozí cíl je domovská složka, vedle `.gitconfig`),
-   - **5** - zápis aliasů do globálního `.gitconfig`.
-3. Volba **1** zobrazí aktuální stav, volba **2** umožní změnit hodnoty v konfiguraci.
+1. Run `GitToolsSetup.cmd`.
+2. In the menu, choose in order:
+   - **3** - create `git-tools.conf` and set its path in the script,
+   - **4** - install `git-tools.sh` (the default target is the home folder, next to `.gitconfig`),
+   - **5** - write the aliases to the global `.gitconfig`.
+3. Option **1** shows the current state, option **2** lets you change the configuration values.
 
-Aliasy nelze zapsat, pokud cesta ke skriptu obsahuje mezeru; v takovém případě skript nainstaluj do jiné složky.
+Aliases cannot be written if the script path contains a space; in that case install the script to a different folder.
 
-## Konfigurace
+## Configuration
 
-Skript načítá `git-tools.conf` (bash syntaxe). Cesta se hledá takto:
+The script loads `git-tools.conf` (bash syntax). The path is resolved as follows:
 
-1. proměnná prostředí `GITTOOLS_CONFIG`,
-2. `GITTOOLS_CONFIG_DEFAULT` ve skriptu (přepisuje ji setup při instalaci; výchozí `J:/config/git-tools.conf`).
+1. the `GITTOOLS_CONFIG` environment variable,
+2. `GITTOOLS_CONFIG_DEFAULT` in the script (rewritten by the setup during installation; default `J:/config/git-tools.conf`).
 
-Hodnoty z konfigurace lze přepsat proměnnými prostředí.
+Values from the config can be overridden with environment variables.
 
-| Proměnná | Výchozí | Význam |
+| Variable | Default | Meaning |
 |---|---|---|
-| `USER_PREFIX` | `user/unknown/` | Prefix uživatelských branchí. |
-| `ENV_BRANCHES` | `main dev acc int work` | Chráněné env branche (oddělené mezerou). |
-| `DEFAULT_BASE` | `main` | Výchozí base branch. |
-| `DIFF_LOG_DIR` | `j:/temp` | Složka pro `dif --log`. |
-| `LEGACY_DIR` | *(prázdné)* | Prefix pro soubory zadané bez cesty (`dif-file`, `com`). |
+| `USER_PREFIX` | `user/unknown/` | Prefix of user branches. |
+| `ENV_BRANCHES` | `main dev acc int work` | Protected env branches (space-separated). |
+| `DEFAULT_BASE` | `main` | Default base branch. |
+| `DIFF_LOG_DIR` | `j:/temp` | Folder for `dif --log`. |
+| `LEGACY_DIR` | *(empty)* | Prefix for files given without a path (`dif-file`, `com`). |
 
-## Konvence názvů branchí
+## Branch naming convention
 
-- Název s `/` (např. `pepa/pes`) se použije beze změny.
-- Název bez `/` dostane `USER_PREFIX` (např. `test` -> `user/jikl/test`).
-- Env branche zůstávají lokálními názvy; při `dif` a `reb` se normalizují na `origin/<branch>` a provede se `fetch`.
-- Tagy (`ver`) prefix nikdy nedostávají.
+- A name containing `/` (e.g. `pepa/pes`) is used unchanged.
+- A name without `/` gets `USER_PREFIX` (e.g. `test` -> `user/jikl/test`).
+- Env branches stay as local names; `dif` and `reb` normalize them to `origin/<branch>` and run `fetch`.
+- Tags (`ver`) never get the prefix.
 
-## Příkazy
+## Commands
 
-Volání: `git <alias> ...` nebo přímo `~/git-tools.sh <příkaz> ...`. Nápověda: `git h`.
+Usage: `git <alias> ...` or directly `~/git-tools.sh <command> ...`. Help: `git h`.
 
-| Příkaz | Popis |
+| Command | Description |
 |---|---|
-| `st` | `git status -sb` + posledních 10 commitů. |
-| `br [-asc\|-desc] [-rev]` | Lokální branche; výchozí řazení podle data posledního commitu. |
-| `sw <branch>` | Přepne na branch. |
-| `new [-c] [-f] <name> [from]` | Vytvoří branch z `DEFAULT_BASE`, z `from` nebo (`-c`) z aktuální. |
-| `del [-f] <branch>` | Smaže lokální branch. |
+| `st` | `git status -sb` + the last 10 commits. |
+| `br [-asc\|-desc] [-rev]` | Local branches; default sort is by last commit date. |
+| `sw <branch>` | Switches to a branch. |
+| `new [-c] [-f] <name> [from]` | Creates a branch from `DEFAULT_BASE`, from `from`, or (`-c`) from the current one. |
+| `del [-f] <branch>` | Deletes a local branch. |
 | `com <message>` / `com <path> <message>` | `git add` + `git commit`. |
-| `cp [-f] <hash>` | Cherry-pick do aktuální branche. |
-| `merg [-f] <branch>` | Merge do aktuální branche (bez fetch). |
-| `reb [-f] [base]` | Interaktivní rebase na base. |
-| `reb-ai [-f] [base]` | Neinteraktivní rebase, konflikty vyhrají commity aktuální branche (`-X theirs`). |
-| `reb-ac [-f] [base]` | Neinteraktivní rebase, konflikty vyhraje base (`-X ours`). |
-| `sync <branch>` | `fetch` + `reset --hard` na `origin/<branch>`, volitelně `git clean -fd`. |
-| `up` | Env branch: `sync`. Ostatní: `fetch` + rebase na `origin/DEFAULT_BASE`. |
-| `done [-f]` | `git push -u origin HEAD`; při selhání nabídne `--force-with-lease`. |
-| `gone [-f]` | `fetch --all --prune` a smazání lokálních branchí s upstreamem `: gone`. |
-| `dif [-n\|-t\|-s] [-l] [b1] [b2]` | Diff dvou refů (výchozí `DEFAULT_BASE` vs. aktuální branch). |
-| `dif-file [-n\|-t\|-s] [-l] [b1] [b2] <file>` | Diff jednoho souboru. |
-| `ver list\|new\|show\|push\|del` | Správa anotovaných tagů. |
+| `cp [-f] <hash>` | Cherry-picks onto the current branch. |
+| `merg [-f] <branch>` | Merges into the current branch (no fetch). |
+| `reb [-f] [base]` | Interactive rebase onto base. |
+| `reb-ai [-f] [base]` | Non-interactive rebase, conflicts won by commits of the current branch (`-X theirs`). |
+| `reb-ac [-f] [base]` | Non-interactive rebase, conflicts won by the base (`-X ours`). |
+| `sync <branch>` | `fetch` + `reset --hard` to `origin/<branch>`, optionally `git clean -fd`. |
+| `up` | Env branch: `sync`. Others: `fetch` + rebase onto `origin/DEFAULT_BASE`. |
+| `done [-f]` | `git push -u origin HEAD`; offers `--force-with-lease` on failure. |
+| `gone [-f]` | `fetch --all --prune` and deletes local branches whose upstream is `: gone`. |
+| `dif [-n\|-t\|-s] [-l] [b1] [b2]` | Diff of two refs (default `DEFAULT_BASE` vs. current branch). |
+| `dif-file [-n\|-t\|-s] [-l] [b1] [b2] <file>` | Diff of a single file. |
+| `ver list\|new\|show\|push\|del` | Management of annotated tags. |
 
-### Volby `dif` / `dif-file`
+### `dif` / `dif-file` options
 
-- `-n`, `--name-only` - jen názvy souborů
-- `-t`, `--name-status` - stav A/M/D
-- `-s`, `--stat` - souhrnná statistika
-- `-l`, `--log` - uloží výstup do `DIFF_LOG_DIR` (`git_diff_YYYYMMDD.log`, resp. `git_diff_file_YYYYMMDD.log`)
+- `-n`, `--name-only` - file names only
+- `-t`, `--name-status` - A/M/D status
+- `-s`, `--stat` - summary statistics
+- `-l`, `--log` - writes the output to `DIFF_LOG_DIR` (`git_diff_YYYYMMDD.log`, or `git_diff_file_YYYYMMDD.log`)
 
-### Správa verzí (`ver`)
+### Version management (`ver`)
 
 ```
-git ver list [pattern]                  # tagy, nejnovější první
-git ver new <version> [ref] [-m <msg>]  # anotovaný tag (zkratka: git ver <version> [ref])
+git ver list [pattern]                  # tags, newest first
+git ver new <version> [ref] [-m <msg>]  # annotated tag (shortcut: git ver <version> [ref])
 git ver show <version>
-git ver push <version|--all>            # tagy se nepublikují automaticky
+git ver push <version|--all>            # tags are not published automatically
 git ver del <version> [--remote]
 ```
 
-## Bezpečnostní chování
+## Safety behavior
 
-- `new`, `del`, `merg`, `reb*`, `cp`, `done` a `gone` odmítnou práci s env branchemi.
-- `-f` / `--force` obejde pouze tuto ochranu. Nespouští `git push --force`.
-- `sw`, `new`, `del`, `sync`, `up`, `merg`, `reb*` a `cp` se zeptají, pokud máš necommitnuté změny.
-- `sync` provádí `reset --hard`; `git clean -fd` je vždy zvlášť potvrzovaný.
+- `new`, `del`, `merg`, `reb*`, `cp`, `done` and `gone` refuse to work with env branches.
+- `-f` / `--force` only bypasses this protection. It does not run `git push --force`.
+- `sw`, `new`, `del`, `sync`, `up`, `merg`, `reb*` and `cp` ask for confirmation if you have uncommitted changes.
+- `sync` performs `reset --hard`; `git clean -fd` is always confirmed separately.
 
-## Příklady
+## Examples
 
 ```
-git new pepa/pes          # nová branch z main
-git new feature -c        # z aktuální branche
-git up                    # rebase na origin/main
+git new pepa/pes          # new branch from main
+git new feature -c        # from the current branch
+git up                    # rebase onto origin/main
 git com "fix: typo"
-git done                  # push aktuální branche
-git dif dev -n -l         # názvy změněných souborů proti origin/dev do logu
-git gone                  # úklid branchí smazaných na remote
+git done                  # push the current branch
+git dif dev -n -l         # names of changed files vs. origin/dev into a log
+git gone                  # clean up branches deleted on the remote
 git ver new v1.2.0 -m "Release 1.2.0"
 ```
