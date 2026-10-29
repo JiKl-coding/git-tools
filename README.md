@@ -1,5 +1,7 @@
 # git-tools
 
+> For the English version, switch to `1.0.0en`.
+
 Malý bash helper pro každodenní Git workflow, určený jako backend pro git aliasy (`git new`, `git sw`, `git done`, ...). Přidává konvenci uživatelských branchí (`USER_PREFIX`), ochranu env branchí (`main`, `dev`, ...) a potvrzení před akcemi, které by mohly přijít o necommitnuté změny.
 
 ## Obsah repozitáře
